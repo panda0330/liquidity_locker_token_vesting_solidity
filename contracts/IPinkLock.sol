@@ -35,5 +35,11 @@ interface IPinkLock {
         string memory description
     ) external returns (uint256[] memory);
 
+    function unlock(uint256 lockId) external;
 
+    function editLock(
+        uint256 lockId,
+        uint256 newAmount,
+        uint256 newUnlockDate
+    ) external;
 }
