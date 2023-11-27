@@ -23,5 +23,17 @@ interface IPinkLock {
         string memory description
     ) external returns (uint256 lockId);
 
+    function multipleVestingLock(
+        address[] calldata owners,
+        uint256[] calldata amounts,
+        address token,
+        bool isLpToken,
+        uint256 tgeDate,
+        uint256 tgeBps,
+        uint256 cycle,
+        uint256 cycleBps,
+        string memory description
+    ) external returns (uint256[] memory);
+
 
 }
