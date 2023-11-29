@@ -102,6 +102,9 @@ library FullMath {
             // correct result modulo 2**256. Since the precoditions guarantee
             // that the outcome is less than 2**256, this is the final result.
             // We don't need to compute the high bits of the result and prod1
-
+            // is no longer required.
+            result = prod0 * inv;
+            return result;
+        }
     }
 }
