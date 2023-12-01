@@ -29,5 +29,15 @@ interface IUniswapV2Router01 {
         payable
         returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
 
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to,
+        uint256 deadline
+    ) external returns (uint256 amountA, uint256 amountB);
+
 
 }
