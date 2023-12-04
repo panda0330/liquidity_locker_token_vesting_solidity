@@ -58,5 +58,15 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         gFees.referralDiscountEthFee = 6e16; // 0.06 eth
     }
 
+    function setFees(
+        uint256 ethFee,
+        uint256 ethEditFee,
+        uint256 referralDiscountEthFee
+    ) public onlyOwner {
+        gFees.ethFee = ethFee;
+        gFees.ethEditFee = ethEditFee;
+        gFees.referralDiscountEthFee = referralDiscountEthFee;
+    }
+
 
 }
