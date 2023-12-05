@@ -92,5 +92,26 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         require(_unlock_date < 10000000000, "TIMESTAMP INVALID"); // prevents errors when timestamp entered in milliseconds
         require(_amount > 0, "INSUFFICIENT AMOUNT");
 
+        IERC20 LpToken = IERC20(address(_lpToken));
+
+        // deposit lp token
+        LpToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        uint256 validFee;
+        uint256 referralAmount = gFees.referralToken.balanceOf(
+            address(msg.sender)
+        );
+        if (referralAmount >= gFees.referralHold) {
+            validFee = gFees.referralDiscountEthFee;
+        } else {
+            validFee = gFees.ethFee;
+        }
+
+        require(msg.value == validFee, "FEE NOT MET");
+
+        TokenLock memory token_lock;
+        token_lock.lockDate = block.timestamp;
+        token_lock.amount = _amount;
+        token_lock.initialAmount = _amount;
 
 }
