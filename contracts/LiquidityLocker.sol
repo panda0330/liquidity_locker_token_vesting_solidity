@@ -68,5 +68,20 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         gFees.referralDiscountEthFee = referralDiscountEthFee;
     }
 
+    function setReferralTokenAndHold(
+        address referralToken,
+        uint256 referralHold
+    ) public onlyOwner {
+        gFees.referralToken = IERC20(referralToken);
+        gFees.referralHold = referralHold;
+    }
+
+    /**
+     * @notice Creates a new lock
+     * @param _lpToken the lp token address
+     * @param _amount amount of LP tokens to lock
+     * @param _unlock_date the unix timestamp (in seconds) until unlock
+     * @param _withdrawer the user who can withdraw liquidity once the lock expires.
+     */
 
 }
