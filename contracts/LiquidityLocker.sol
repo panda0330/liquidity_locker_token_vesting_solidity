@@ -83,5 +83,14 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
      * @param _unlock_date the unix timestamp (in seconds) until unlock
      * @param _withdrawer the user who can withdraw liquidity once the lock expires.
      */
+    function lockLpTokens(
+        address _lpToken,
+        uint256 _amount,
+        uint256 _unlock_date,
+        address payable _withdrawer
+    ) external payable nonReentrant {
+        require(_unlock_date < 10000000000, "TIMESTAMP INVALID"); // prevents errors when timestamp entered in milliseconds
+        require(_amount > 0, "INSUFFICIENT AMOUNT");
+
 
 }
