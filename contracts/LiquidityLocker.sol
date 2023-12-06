@@ -214,4 +214,22 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         );
     }
 
+    /**
+     * @notice transfer a lock to a new owner, e.g. presale project -> project owner
+     */
+    function transferLockOwnership(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockID,
+        address payable _newOwner
+    ) external payable {
+        require(msg.sender != _newOwner, "OWNER");
+        uint256 lockID = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage transferredLock = tokenLocks[_lpToken][lockID];
+        require(
+            lockID == _lockID && transferredLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+
 }
