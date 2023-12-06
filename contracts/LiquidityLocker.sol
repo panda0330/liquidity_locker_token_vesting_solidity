@@ -113,5 +113,86 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         token_lock.lockDate = block.timestamp;
         token_lock.amount = _amount;
         token_lock.initialAmount = _amount;
+        token_lock.unlockDate = _unlock_date;
+        token_lock.lockID = tokenLocks[_lpToken].length;
+        token_lock.owner = _withdrawer;
+
+        // record the lock for the lp token
+        tokenLocks[_lpToken].push(token_lock);
+        lockedTokens.add(_lpToken);
+
+        //record the lock for the user
+        UserInfo storage user = users[_withdrawer];
+        user.lockedTokens.add(_lpToken);
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(token_lock.lockID);
+
+        emit onDeposit(
+            _lpToken,
+            msg.sender,
+            token_lock.amount,
+            token_lock.lockDate,
+            token_lock.unlockDate
+        );
+    }
+
+    /**
+     * @notice split a lock into two seperate locks, useful when a lock is about to expire and youd like to relock a portion
+     * and withdraw a smaller portion
+     * @param _lpToken the lp token address
+     * @param _index users[msg.sender].locksForToken[_lpToken][_index]
+     * @param _lockedId tokenLocks[_lpToken][lockID]
+     * @param _amount amount to split
+
+     */
+    function splitLock(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockedId,
+        uint256 _amount
+    ) external payable nonReentrant {
+        require(_amount > 0, "ZERO AMOUNT");
+        uint256 lockId = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockId];
+        require(
+            lockId == _lockedId && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(msg.value == gFees.ethEditFee, "FEE NOT MET");
+
+        userLock.amount = userLock.amount - (_amount);
+
+        TokenLock memory token_lock;
+        token_lock.lockDate = userLock.lockDate;
+        token_lock.amount = _amount;
+        token_lock.initialAmount = _amount;
+        token_lock.unlockDate = userLock.unlockDate;
+        token_lock.lockID = tokenLocks[_lpToken].length;
+        token_lock.owner = msg.sender;
+
+        // record the lock for the lp token
+        tokenLocks[_lpToken].push(token_lock);
+
+        //record the lock for the user
+        UserInfo storage user = users[msg.sender];
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(token_lock.lockID);
+    }
+
+    /**
+     * @notice increase the amount of tokens per a specific lock, this is preferable to creating a new lock, less fees, and faster loading on our live block explorer
+     */
+    function incrementLock(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockId,
+        uint256 _amount
+    ) external payable nonReentrant {
+        require(_amount > 0, "ZERO AMOUNT");
+        uint256 lockId = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockId];
+        require(
+            lockId == _lockId && userLock.owner == msg.sender,
 
 }
