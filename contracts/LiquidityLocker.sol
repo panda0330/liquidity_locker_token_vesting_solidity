@@ -194,5 +194,24 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         TokenLock storage userLock = tokenLocks[_lpToken][lockId];
         require(
             lockId == _lockId && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(msg.value == gFees.ethEditFee, "FEE NOT MET");
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+        // deposit lp token
+        LpToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        userLock.amount = userLock.amount + (_amount);
+
+        emit onDeposit(
+            _lpToken,
+            msg.sender,
+            _amount,
+            userLock.lockDate,
+            userLock.unlockDate
+        );
+    }
 
 }
