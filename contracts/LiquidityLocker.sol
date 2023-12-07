@@ -242,5 +242,21 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         userLocks[_index] = userLocks[userLocks.length - 1];
         userLocks.pop();
 
+        if (userLocks.length == 0) {
+            users[msg.sender].lockedTokens.remove(_lpToken);
+        }
+        transferredLock.owner = _newOwner;
+    }
+
+    /**
+     * @notice withdraw a specified amount from a lock. _index and _lockID ensure the correct lock is changed
+     * this prevents errors when a user performs multiple tx per block possibly with varying gas prices
+     */
+    function withdraw(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockID,
+        uint256 _amount
+    ) external nonReentrant {
 
 }
