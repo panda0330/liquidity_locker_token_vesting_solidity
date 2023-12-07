@@ -231,5 +231,16 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
             "LOCK MISMATCH"
         ); // ensures correct lock is affected
 
+        // record the lock for the new Owner
+        UserInfo storage user = users[_newOwner];
+        user.lockedTokens.add(_lpToken);
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(transferredLock.lockID);
+
+        // remove the lock from the old owner
+        uint256[] storage userLocks = users[msg.sender].locksForToken[_lpToken];
+        userLocks[_index] = userLocks[userLocks.length - 1];
+        userLocks.pop();
+
 
 }
