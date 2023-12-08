@@ -282,5 +282,18 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
             }
         }
 
+        IERC20 LpToken = IERC20(address(_lpToken));
+        // withdraw lp token
+        LpToken.transfer(address(msg.sender), _amount);
+        emit onWithdraw(_lpToken, _amount);
+    }
+
+    // global functions
+    function getNumLocksForToken(
+        address _lpToken
+    ) external view returns (uint256) {
+        return tokenLocks[_lpToken].length;
+    }
+
 
 }
