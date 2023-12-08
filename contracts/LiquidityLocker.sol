@@ -258,5 +258,29 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         uint256 _lockID,
         uint256 _amount
     ) external nonReentrant {
+        require(_amount > 0, "ZERO WITHDRAWL");
+        uint256 lockID = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockID];
+        require(
+            lockID == _lockID && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(userLock.unlockDate < block.timestamp, "NOT YET");
+        userLock.amount = userLock.amount - (_amount);
+
+        // clean user storage
+        if (userLock.amount == 0) {
+            uint256[] storage userLocks = users[msg.sender].locksForToken[
+                _lpToken
+            ];
+            userLocks[_index] = userLocks[userLocks.length - 1];
+            userLocks.pop();
+
+            if (userLocks.length == 0) {
+                users[msg.sender].lockedTokens.remove(_lpToken);
+            }
+        }
+
 
 }
