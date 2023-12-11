@@ -313,4 +313,25 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         return user.lockedTokens.length();
     }
 
+    function getUserLockedTokenAtIndex(
+        address _user,
+        uint256 _index
+    ) external view returns (address) {
+        UserInfo storage user = users[_user];
+        return user.lockedTokens.at(_index);
+    }
+
+    function getUserNumLocksForToken(
+        address _user,
+        address _lpToken
+    ) external view returns (uint256) {
+        UserInfo storage user = users[_user];
+        return user.locksForToken[_lpToken].length;
+    }
+
+    function getUserLockForTokenAtIndex(
+        address _user,
+        address _lpToken,
+        uint256 _index
+
 }
