@@ -345,5 +345,8 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
             tokenLock.amount,
             tokenLock.initialAmount,
             tokenLock.unlockDate,
-
+            tokenLock.lockID,
+            tokenLock.owner
+        );
+    }
 }
