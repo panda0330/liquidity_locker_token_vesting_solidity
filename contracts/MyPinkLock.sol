@@ -62,5 +62,19 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
     mapping(address => CumulativeLockInfo) public cumulativeLockInfo;
     mapping(address => EnumerableSet.UintSet) private _tokenToLockIds;
 
+    event LockAdded(
+        uint256 indexed id,
+        address token,
+        address owner,
+        uint256 amount,
+        uint256 unlockDate
+    );
+    event LockUpdated(
+        uint256 indexed id,
+        address token,
+        address owner,
+        uint256 newAmount,
+        uint256 newUnlockDate
+    );
 
 }
