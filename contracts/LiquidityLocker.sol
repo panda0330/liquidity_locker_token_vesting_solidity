@@ -333,5 +333,17 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         address _user,
         address _lpToken,
         uint256 _index
+    )
+        external
+        view
+        returns (uint256, uint256, uint256, uint256, uint256, address)
+    {
+        uint256 lockID = users[_user].locksForToken[_lpToken][_index];
+        TokenLock storage tokenLock = tokenLocks[_lpToken][lockID];
+        return (
+            tokenLock.lockDate,
+            tokenLock.amount,
+            tokenLock.initialAmount,
+            tokenLock.unlockDate,
 
 }
