@@ -76,5 +76,27 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         uint256 newAmount,
         uint256 newUnlockDate
     );
+    event LockRemoved(
+        uint256 indexed id,
+        address token,
+        address owner,
+        uint256 amount,
+        uint256 unlockedAt
+    );
+    event LockVested(
+        uint256 indexed id,
+        address token,
+        address owner,
+        uint256 amount,
+        uint256 total,
+        uint256 timestamp
+    );
+    event LockDescriptionChanged(uint256 lockId);
+    event LockOwnerChanged(uint256 lockId, address owner, address newOwner);
+
+    modifier validLock(uint256 lockId) {
+        _getActualIndex(lockId);
+        _;
+    }
 
 }
