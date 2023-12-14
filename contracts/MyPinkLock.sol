@@ -119,5 +119,26 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         gFees.referralDiscountEthFee = referralDiscountEthFee;
     }
 
+    function setReferralTokenAndHold(
+        address referralToken,
+        uint256 referralHold
+    ) public onlyOwner {
+        gFees.referralToken = address(referralToken);
+        gFees.referralHold = referralHold;
+    }
+
+    function lock(
+        address owner,
+        address token,
+        bool isLpToken,
+        uint256 amount,
+        uint256 unlockDate,
+        string memory description
+    ) external payable override returns (uint256 id) {
+        require(
+            unlockDate > block.timestamp,
+            "Unlock date should be in the future"
+        );
+
 
 }
