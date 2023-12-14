@@ -99,4 +99,25 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         _;
     }
 
+    constructor() {
+        gFees.ethFee = 8e12; // 0.08 eth
+        gFees.ethEditFee = 5e12; // 0.05 eth
+        gFees.referralToken = address(
+            0xAe6D3803B3358b09894e2f53A9f7B6A80d648B4C
+        );
+        gFees.referralHold = 100e18; // 100 token
+        gFees.referralDiscountEthFee = 6e12; // 0.06 eth
+    }
+
+    function setFees(
+        uint256 ethFee,
+        uint256 ethEditFee,
+        uint256 referralDiscountEthFee
+    ) public onlyOwner {
+        gFees.ethFee = ethFee;
+        gFees.ethEditFee = ethEditFee;
+        gFees.referralDiscountEthFee = referralDiscountEthFee;
+    }
+
+
 }
