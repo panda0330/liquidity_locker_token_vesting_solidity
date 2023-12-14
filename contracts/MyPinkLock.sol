@@ -162,5 +162,26 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             description,
             false
         );
+        _safeTransferFromEnsureExactAmount(
+            token,
+            msg.sender,
+            address(this),
+            amount
+        );
+        emit LockAdded(id, token, owner, amount, unlockDate);
+        return id;
+    }
+
+    function vestingLock(
+        address owner,
+        address token,
+        bool isLpToken,
+        uint256 amount,
+        uint256 unlockDate,
+        string memory description
+    ) external payable override returns (uint256 id) {
+        require(unlockDate > block.timestamp, "Unlock should be in the future");
+        require(unlockDate < 1e10, "Timestamp invalid"); // prevents errors when timestamp entered in milliseconds
+        require(amount > 0, "Amount should be greater than 0");
 
 }
