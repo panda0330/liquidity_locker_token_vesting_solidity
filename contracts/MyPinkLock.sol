@@ -184,4 +184,23 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         require(unlockDate < 1e10, "Timestamp invalid"); // prevents errors when timestamp entered in milliseconds
         require(amount > 0, "Amount should be greater than 0");
 
+        uint256 validFee;
+        if (!hasRefferalTokenHold(msg.sender)) {
+            validFee = gFees.ethFee;
+        } else {
+            validFee = gFees.referralDiscountEthFee;
+        }
+
+        require(msg.value == validFee, "SERVICE FEE");
+
+        id = _createLock(
+            owner,
+            token,
+            isLpToken,
+            amount,
+            unlockDate,
+            description,
+            true
+        );
+
 }
