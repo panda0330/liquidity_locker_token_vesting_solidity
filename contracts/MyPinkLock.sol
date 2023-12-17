@@ -202,5 +202,27 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             description,
             true
         );
+        _safeTransferFromEnsureExactAmount(
+            token,
+            msg.sender,
+            address(this),
+            amount
+        );
+        emit LockAdded(id, token, owner, amount, unlockDate);
+        return id;
+    }
+
+    function _sumAmount(
+        uint256[] calldata amounts
+    ) internal pure returns (uint256) {
+        uint256 sum = 0;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            if (amounts[i] == 0) {
+                revert("Amount cant be zero");
+            }
+            sum += amounts[i];
+        }
+        return sum;
+    }
 
 }
