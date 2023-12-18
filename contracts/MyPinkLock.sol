@@ -241,5 +241,21 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
                 token,
                 possibleFactoryAddress,
                 amount,
+                unlockDate,
+                description,
+                isVesting
+            );
+        } else {
+            id = _lockNormalToken(
+                owner,
+                token,
+                amount,
+                unlockDate,
+                description,
+                isVesting
+            );
+        }
+        return id;
+    }
 
 }
