@@ -225,4 +225,21 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return sum;
     }
 
+    function _createLock(
+        address owner,
+        address token,
+        bool isLpToken,
+        uint256 amount,
+        uint256 unlockDate,
+        string memory description,
+        bool isVesting
+    ) internal returns (uint256 id) {
+        if (isLpToken) {
+            address possibleFactoryAddress = _parseFactoryAddress(token);
+            id = _lockLpToken(
+                owner,
+                token,
+                possibleFactoryAddress,
+                amount,
+
 }
