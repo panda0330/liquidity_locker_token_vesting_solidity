@@ -328,5 +328,31 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         id = _locks.length + ID_PADDING;
         Lock memory newLock = Lock({
             id: id,
+            token: token,
+            owner: owner,
+            amount: amount,
+            lockDate: block.timestamp,
+            unlockDate: unlockDate,
+            withdrawnAmount: 0,
+            description: description,
+            isVesting: isVesting
+        });
+        _locks.push(newLock);
+    }
+
+    function unlock(uint256 lockId) external override validLock(lockId) {
+        Lock storage userLock = _locks[_getActualIndex(lockId)];
+        require(
+            userLock.owner == msg.sender,
+            "You are not the owner of this lock"
+        );
+
+        if (userLock.isVesting) {
+            _vestingUnlock(userLock);
+        } else {
+            _normalUnlock(userLock);
+        }
+    }
+
 
 }
