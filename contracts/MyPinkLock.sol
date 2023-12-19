@@ -304,5 +304,29 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             description,
             isVesting
         );
+        _userNormalLockIds[owner].add(id);
+        _normalLockedTokens.add(token);
+
+        CumulativeLockInfo storage tokenInfo = cumulativeLockInfo[token];
+        if (tokenInfo.token == address(0)) {
+            tokenInfo.token = token;
+            tokenInfo.factory = address(0);
+        }
+        tokenInfo.amount = tokenInfo.amount + amount;
+
+        _tokenToLockIds[token].add(id);
+    }
+
+    function _registerLock(
+        address owner,
+        address token,
+        uint256 amount,
+        uint256 unlockDate,
+        string memory description,
+        bool isVesting
+    ) private whenNotPaused returns (uint256 id) {
+        id = _locks.length + ID_PADDING;
+        Lock memory newLock = Lock({
+            id: id,
 
 }
