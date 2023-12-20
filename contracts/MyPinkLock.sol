@@ -381,4 +381,27 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             tokenInfo.amount = tokenInfo.amount - unlockAmount;
         }
 
+        if (tokenInfo.amount == 0) {
+            if (isLpToken) {
+                _lpLockedTokens.remove(userLock.token);
+            } else {
+                _normalLockedTokens.remove(userLock.token);
+            }
+        }
+        userLock.withdrawnAmount = unlockAmount;
+
+        _tokenToLockIds[userLock.token].remove(userLock.id);
+
+        IERC20(userLock.token).transfer(msg.sender, unlockAmount);
+
+        emit LockRemoved(
+            userLock.id,
+            userLock.token,
+            msg.sender,
+            unlockAmount,
+            block.timestamp
+        );
+    }
+
+
 }
