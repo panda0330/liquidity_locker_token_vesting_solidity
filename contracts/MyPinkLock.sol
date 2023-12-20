@@ -354,5 +354,31 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         }
     }
 
+    function _normalUnlock(Lock storage userLock) internal {
+        require(
+            block.timestamp >= userLock.unlockDate,
+            "It is not time to unlock"
+        );
+        require(userLock.withdrawnAmount == 0, "Nothing to unlock");
+
+        CumulativeLockInfo storage tokenInfo = cumulativeLockInfo[
+            userLock.token
+        ];
+
+        bool isLpToken = tokenInfo.factory != address(0);
+
+        if (isLpToken) {
+            _userLpLockIds[msg.sender].remove(userLock.id);
+        } else {
+            _userNormalLockIds[msg.sender].remove(userLock.id);
+        }
+
+        uint256 unlockAmount = userLock.amount;
+
+        if (tokenInfo.amount <= unlockAmount) {
+            tokenInfo.amount = 0;
+        } else {
+            tokenInfo.amount = tokenInfo.amount - unlockAmount;
+        }
 
 }
