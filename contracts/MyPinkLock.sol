@@ -466,4 +466,40 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return _withdrawableTokens(userLock);
     }
 
+    function getVestingWithdrawableAmount(
+        uint256 startDate,
+        uint256 endDate,
+        uint256 amount,
+        uint256 currentDate
+    ) internal pure returns (uint256) {
+        if (startDate == endDate) {
+            return currentDate > endDate ? amount : 0;
+        }
+        uint256 timeClamp = currentDate;
+        if (timeClamp > endDate) {
+            timeClamp = endDate;
+        }
+        if (timeClamp < startDate) {
+            timeClamp = startDate;
+        }
+        uint256 elapsed = timeClamp - startDate;
+        uint256 fullPeriod = endDate - startDate;
+        return FullMath.mulDiv(amount, elapsed, fullPeriod); // fullPeriod cannot equal zero due to earlier checks and restraints when locking tokens (startEmission < endEmission)
+    }
+
+    function _withdrawableTokens(
+        Lock memory userLock
+    ) internal view returns (uint256) {
+        if (userLock.amount == 0) return 0;
+        if (userLock.withdrawnAmount >= userLock.amount) return 0;
+        if (!userLock.isVesting && block.timestamp < userLock.unlockDate)
+            return 0;
+
+        uint256 currentTotalWithdrawable = getVestingWithdrawableAmount(
+            userLock.lockDate,
+            userLock.unlockDate,
+            userLock.amount,
+            block.timestamp
+        );
+
 }
