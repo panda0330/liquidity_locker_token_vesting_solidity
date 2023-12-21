@@ -501,5 +501,41 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             userLock.amount,
             block.timestamp
         );
+        uint256 withdrawable = 0;
+        if (currentTotalWithdrawable > userLock.amount) {
+            withdrawable = userLock.amount - userLock.withdrawnAmount;
+        } else {
+            withdrawable = currentTotalWithdrawable - userLock.withdrawnAmount;
+        }
+        return withdrawable;
+    }
+
+    function editLock(
+        uint256 lockId,
+        uint256 newAmount,
+        uint256 newUnlockDate
+    ) external payable override validLock(lockId) {
+        Lock storage userLock = _locks[_getActualIndex(lockId)];
+        require(
+            userLock.owner == msg.sender,
+            "You are not the owner of this lock"
+        );
+        require(userLock.withdrawnAmount == 0, "Lock was unlocked");
+
+        uint256 validFee;
+        if (!hasRefferalTokenHold(msg.sender)) {
+            validFee = gFees.ethEditFee;
+        } else {
+            validFee = gFees.referralDiscountEthFee;
+        }
+
+        require(msg.value == validFee, "SERVICE FEE");
+
+        if (newUnlockDate > 0) {
+            require(
+                newUnlockDate >= userLock.unlockDate &&
+                    newUnlockDate > block.timestamp,
+                "New unlock time should not be before old unlock time or current time"
+            );
 
 }
