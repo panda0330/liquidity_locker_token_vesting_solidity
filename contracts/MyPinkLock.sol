@@ -563,5 +563,27 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             }
         }
 
+        emit LockUpdated(
+            userLock.id,
+            userLock.token,
+            userLock.owner,
+            userLock.amount,
+            userLock.unlockDate
+        );
+    }
+
+    function editLockDescription(
+        uint256 lockId,
+        string memory description
+    ) external validLock(lockId) {
+        Lock storage userLock = _locks[_getActualIndex(lockId)];
+        require(
+            userLock.owner == msg.sender,
+            "You are not the owner of this lock"
+        );
+        userLock.description = description;
+        emit LockDescriptionChanged(lockId);
+    }
+
 
 }
