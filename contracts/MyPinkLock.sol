@@ -537,5 +537,31 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
                     newUnlockDate > block.timestamp,
                 "New unlock time should not be before old unlock time or current time"
             );
+            userLock.unlockDate = newUnlockDate;
+        }
+
+        if (newAmount > 0) {
+            require(
+                newAmount >= userLock.amount,
+                "New amount should not be less than current amount"
+            );
+
+            uint256 diff = newAmount - userLock.amount;
+
+            if (diff > 0) {
+                userLock.amount = newAmount;
+                CumulativeLockInfo storage tokenInfo = cumulativeLockInfo[
+                    userLock.token
+                ];
+                tokenInfo.amount = tokenInfo.amount + diff;
+                _safeTransferFromEnsureExactAmount(
+                    userLock.token,
+                    msg.sender,
+                    address(this),
+                    diff
+                );
+            }
+        }
+
 
 }
