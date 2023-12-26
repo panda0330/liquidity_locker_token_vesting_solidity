@@ -585,5 +585,257 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         emit LockDescriptionChanged(lockId);
     }
 
+    function transferLockOwnership(
+        uint256 lockId,
+        address newOwner
+    ) public payable validLock(lockId) {
+        Lock storage userLock = _locks[_getActualIndex(lockId)];
+        address currentOwner = userLock.owner;
+        require(
+            currentOwner == msg.sender,
+            "You are not the owner of this lock"
+        );
 
+        uint256 validFee;
+        if (!hasRefferalTokenHold(msg.sender)) {
+            validFee = gFees.ethEditFee;
+        } else {
+            validFee = gFees.referralDiscountEthFee;
+        }
+
+        require(msg.value == validFee, "SERVICE FEE");
+
+        userLock.owner = newOwner;
+
+        CumulativeLockInfo storage tokenInfo = cumulativeLockInfo[
+            userLock.token
+        ];
+
+        bool isLpToken = tokenInfo.factory != address(0);
+
+        if (isLpToken) {
+            _userLpLockIds[currentOwner].remove(lockId);
+            _userLpLockIds[newOwner].add(lockId);
+        } else {
+            _userNormalLockIds[currentOwner].remove(lockId);
+            _userNormalLockIds[newOwner].add(lockId);
+        }
+
+        emit LockOwnerChanged(lockId, currentOwner, newOwner);
+    }
+
+    function renounceLockOwnership(uint256 lockId) external {
+        transferLockOwnership(lockId, address(0));
+    }
+
+    function _safeTransferFromEnsureExactAmount(
+        address token,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) internal {
+        uint256 oldRecipientBalance = IERC20(token).balanceOf(recipient);
+        IERC20(token).safeTransferFrom(sender, recipient, amount);
+        uint256 newRecipientBalance = IERC20(token).balanceOf(recipient);
+        require(
+            newRecipientBalance - oldRecipientBalance == amount,
+            "Not enough token was transfered"
+        );
+    }
+
+    function getTotalLockCount() external view returns (uint256) {
+        // Returns total lock count, regardless of whether it has been unlocked or not
+        return _locks.length;
+    }
+
+    function getLockAt(uint256 index) external view returns (Lock memory) {
+        return _locks[index];
+    }
+
+    function getLockById(uint256 lockId) public view returns (Lock memory) {
+        return _locks[_getActualIndex(lockId)];
+    }
+
+    function allLpTokenLockedCount() public view returns (uint256) {
+        return _lpLockedTokens.length();
+    }
+
+    function allNormalTokenLockedCount() public view returns (uint256) {
+        return _normalLockedTokens.length();
+    }
+
+    function getCumulativeLpTokenLockInfoAt(
+        uint256 index
+    ) external view returns (CumulativeLockInfo memory) {
+        return cumulativeLockInfo[_lpLockedTokens.at(index)];
+    }
+
+    function getCumulativeNormalTokenLockInfoAt(
+        uint256 index
+    ) external view returns (CumulativeLockInfo memory) {
+        return cumulativeLockInfo[_normalLockedTokens.at(index)];
+    }
+
+    function getCumulativeLpTokenLockInfo(
+        uint256 start,
+        uint256 end
+    ) external view returns (CumulativeLockInfo[] memory) {
+        if (end >= _lpLockedTokens.length()) {
+            end = _lpLockedTokens.length() - 1;
+        }
+        uint256 length = end - start + 1;
+        CumulativeLockInfo[] memory lockInfo = new CumulativeLockInfo[](length);
+        uint256 currentIndex = 0;
+        for (uint256 i = start; i <= end; i++) {
+            lockInfo[currentIndex] = cumulativeLockInfo[_lpLockedTokens.at(i)];
+            currentIndex++;
+        }
+        return lockInfo;
+    }
+
+    function getCumulativeNormalTokenLockInfo(
+        uint256 start,
+        uint256 end
+    ) external view returns (CumulativeLockInfo[] memory) {
+        if (end >= _normalLockedTokens.length()) {
+            end = _normalLockedTokens.length() - 1;
+        }
+        uint256 length = end - start + 1;
+        CumulativeLockInfo[] memory lockInfo = new CumulativeLockInfo[](length);
+        uint256 currentIndex = 0;
+        for (uint256 i = start; i <= end; i++) {
+            lockInfo[currentIndex] = cumulativeLockInfo[
+                _normalLockedTokens.at(i)
+            ];
+            currentIndex++;
+        }
+        return lockInfo;
+    }
+
+    function totalTokenLockedCount() external view returns (uint256) {
+        return allLpTokenLockedCount() + allNormalTokenLockedCount();
+    }
+
+    function lpLockCountForUser(address user) public view returns (uint256) {
+        return _userLpLockIds[user].length();
+    }
+
+    function lpLocksForUser(
+        address user
+    ) external view returns (Lock[] memory) {
+        uint256 length = _userLpLockIds[user].length();
+        Lock[] memory userLocks = new Lock[](length);
+        for (uint256 i = 0; i < length; i++) {
+            userLocks[i] = getLockById(_userLpLockIds[user].at(i));
+        }
+        return userLocks;
+    }
+
+    function lpLockForUserAtIndex(
+        address user,
+        uint256 index
+    ) external view returns (Lock memory) {
+        require(lpLockCountForUser(user) > index, "Invalid index");
+        return getLockById(_userLpLockIds[user].at(index));
+    }
+
+    function normalLockCountForUser(
+        address user
+    ) public view returns (uint256) {
+        return _userNormalLockIds[user].length();
+    }
+
+    function normalLocksForUser(
+        address user
+    ) external view returns (Lock[] memory) {
+        uint256 length = _userNormalLockIds[user].length();
+        Lock[] memory userLocks = new Lock[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            userLocks[i] = getLockById(_userNormalLockIds[user].at(i));
+        }
+        return userLocks;
+    }
+
+    function normalLockForUserAtIndex(
+        address user,
+        uint256 index
+    ) external view returns (Lock memory) {
+        require(normalLockCountForUser(user) > index, "Invalid index");
+        return getLockById(_userNormalLockIds[user].at(index));
+    }
+
+    function totalLockCountForUser(
+        address user
+    ) external view returns (uint256) {
+        return normalLockCountForUser(user) + lpLockCountForUser(user);
+    }
+
+    function totalLockCountForToken(
+        address token
+    ) external view returns (uint256) {
+        return _tokenToLockIds[token].length();
+    }
+
+    function getLocksForToken(
+        address token,
+        uint256 start,
+        uint256 end
+    ) public view returns (Lock[] memory) {
+        if (end >= _tokenToLockIds[token].length()) {
+            end = _tokenToLockIds[token].length() - 1;
+        }
+        uint256 length = end - start + 1;
+        Lock[] memory locks = new Lock[](length);
+        uint256 currentIndex = 0;
+        for (uint256 i = start; i <= end; i++) {
+            locks[currentIndex] = getLockById(_tokenToLockIds[token].at(i));
+            currentIndex++;
+        }
+        return locks;
+    }
+
+    function _getActualIndex(uint256 lockId) internal view returns (uint256) {
+        if (lockId < ID_PADDING) {
+            revert("Invalid lock id");
+        }
+        uint256 actualIndex = lockId - ID_PADDING;
+        require(actualIndex < _locks.length, "Invalid lock id");
+        return actualIndex;
+    }
+
+    function _parseFactoryAddress(
+        address token
+    ) internal view returns (address) {
+        address possibleFactoryAddress;
+        try IUniswapV2Pair(token).factory() returns (address factory) {
+            possibleFactoryAddress = factory;
+        } catch {
+            revert("This token is not a LP token");
+        }
+        require(
+            possibleFactoryAddress != address(0) &&
+                _isValidLpToken(token, possibleFactoryAddress),
+            "This token is not a LP token."
+        );
+        return possibleFactoryAddress;
+    }
+
+    function _isValidLpToken(
+        address token,
+        address factory
+    ) private view returns (bool) {
+        IUniswapV2Pair pair = IUniswapV2Pair(token);
+        address factoryPair = IUniswapV2Factory(factory).getPair(
+            pair.token0(),
+            pair.token1()
+        );
+        return factoryPair == token;
+    }
+
+    // consider service fee
+    function hasRefferalTokenHold(address _user) internal view returns (bool) {
+        return
+            IERC20(gFees.referralToken).balanceOf(_user) >= gFees.referralHold;
+    }
 }
