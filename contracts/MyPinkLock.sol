@@ -572,5 +572,44 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         );
     }
 
+    function editLockDescription(
+        uint256 lockId,
+        string memory description
+    ) external validLock(lockId) {
+        Lock storage userLock = _locks[_getActualIndex(lockId)];
+        require(
+            userLock.owner == msg.sender,
+            "You are not the owner of this lock"
+        );
+        userLock.description = description;
+        emit LockDescriptionChanged(lockId);
+    }
+
+    function transferLockOwnership(
+        uint256 lockId,
+        address newOwner
+    ) public payable validLock(lockId) {
+        Lock storage userLock = _locks[_getActualIndex(lockId)];
+        address currentOwner = userLock.owner;
+        require(
+            currentOwner == msg.sender,
+            "You are not the owner of this lock"
+        );
+
+        uint256 validFee;
+        if (!hasRefferalTokenHold(msg.sender)) {
+            validFee = gFees.ethEditFee;
+        } else {
+            validFee = gFees.referralDiscountEthFee;
+        }
+
+        require(msg.value == validFee, "SERVICE FEE");
+
+        userLock.owner = newOwner;
+
+        CumulativeLockInfo storage tokenInfo = cumulativeLockInfo[
+            userLock.token
+        ];
+
 
 }
