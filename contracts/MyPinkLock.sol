@@ -611,5 +611,46 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
             userLock.token
         ];
 
+        bool isLpToken = tokenInfo.factory != address(0);
+
+        if (isLpToken) {
+            _userLpLockIds[currentOwner].remove(lockId);
+            _userLpLockIds[newOwner].add(lockId);
+        } else {
+            _userNormalLockIds[currentOwner].remove(lockId);
+            _userNormalLockIds[newOwner].add(lockId);
+        }
+
+        emit LockOwnerChanged(lockId, currentOwner, newOwner);
+    }
+
+    function renounceLockOwnership(uint256 lockId) external {
+        transferLockOwnership(lockId, address(0));
+    }
+
+    function _safeTransferFromEnsureExactAmount(
+        address token,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) internal {
+        uint256 oldRecipientBalance = IERC20(token).balanceOf(recipient);
+        IERC20(token).safeTransferFrom(sender, recipient, amount);
+        uint256 newRecipientBalance = IERC20(token).balanceOf(recipient);
+        require(
+            newRecipientBalance - oldRecipientBalance == amount,
+            "Not enough token was transfered"
+        );
+    }
+
+    function getTotalLockCount() external view returns (uint256) {
+        // Returns total lock count, regardless of whether it has been unlocked or not
+        return _locks.length;
+    }
+
+    function getLockAt(uint256 index) external view returns (Lock memory) {
+        return _locks[index];
+    }
+
 
 }
