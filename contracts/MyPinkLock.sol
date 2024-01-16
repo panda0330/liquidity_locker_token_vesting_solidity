@@ -693,4 +693,43 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return lockInfo;
     }
 
+    function getCumulativeNormalTokenLockInfo(
+        uint256 start,
+        uint256 end
+    ) external view returns (CumulativeLockInfo[] memory) {
+        if (end >= _normalLockedTokens.length()) {
+            end = _normalLockedTokens.length() - 1;
+        }
+        uint256 length = end - start + 1;
+        CumulativeLockInfo[] memory lockInfo = new CumulativeLockInfo[](length);
+        uint256 currentIndex = 0;
+        for (uint256 i = start; i <= end; i++) {
+            lockInfo[currentIndex] = cumulativeLockInfo[
+                _normalLockedTokens.at(i)
+            ];
+            currentIndex++;
+        }
+        return lockInfo;
+    }
+
+    function totalTokenLockedCount() external view returns (uint256) {
+        return allLpTokenLockedCount() + allNormalTokenLockedCount();
+    }
+
+    function lpLockCountForUser(address user) public view returns (uint256) {
+        return _userLpLockIds[user].length();
+    }
+
+    function lpLocksForUser(
+        address user
+    ) external view returns (Lock[] memory) {
+        uint256 length = _userLpLockIds[user].length();
+        Lock[] memory userLocks = new Lock[](length);
+        for (uint256 i = 0; i < length; i++) {
+            userLocks[i] = getLockById(_userLpLockIds[user].at(i));
+        }
+        return userLocks;
+    }
+
+
 }
