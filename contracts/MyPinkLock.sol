@@ -731,5 +731,18 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return userLocks;
     }
 
+    function lpLockForUserAtIndex(
+        address user,
+        uint256 index
+    ) external view returns (Lock memory) {
+        require(lpLockCountForUser(user) > index, "Invalid index");
+        return getLockById(_userLpLockIds[user].at(index));
+    }
 
-}
+    function normalLockCountForUser(
+        address user
+    ) public view returns (uint256) {
+        return _userNormalLockIds[user].length();
+    }
+
+
