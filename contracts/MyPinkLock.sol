@@ -745,4 +745,53 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return _userNormalLockIds[user].length();
     }
 
+    function normalLocksForUser(
+        address user
+    ) external view returns (Lock[] memory) {
+        uint256 length = _userNormalLockIds[user].length();
+        Lock[] memory userLocks = new Lock[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            userLocks[i] = getLockById(_userNormalLockIds[user].at(i));
+        }
+        return userLocks;
+    }
+
+    function normalLockForUserAtIndex(
+        address user,
+        uint256 index
+    ) external view returns (Lock memory) {
+        require(normalLockCountForUser(user) > index, "Invalid index");
+        return getLockById(_userNormalLockIds[user].at(index));
+    }
+
+    function totalLockCountForUser(
+        address user
+    ) external view returns (uint256) {
+        return normalLockCountForUser(user) + lpLockCountForUser(user);
+    }
+
+    function totalLockCountForToken(
+        address token
+    ) external view returns (uint256) {
+        return _tokenToLockIds[token].length();
+    }
+
+    function getLocksForToken(
+        address token,
+        uint256 start,
+        uint256 end
+    ) public view returns (Lock[] memory) {
+        if (end >= _tokenToLockIds[token].length()) {
+            end = _tokenToLockIds[token].length() - 1;
+        }
+        uint256 length = end - start + 1;
+        Lock[] memory locks = new Lock[](length);
+        uint256 currentIndex = 0;
+        for (uint256 i = start; i <= end; i++) {
+            locks[currentIndex] = getLockById(_tokenToLockIds[token].at(i));
+            currentIndex++;
+        }
+        return locks;
+    }
 
