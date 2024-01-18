@@ -795,3 +795,29 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return locks;
     }
 
+    function _getActualIndex(uint256 lockId) internal view returns (uint256) {
+        if (lockId < ID_PADDING) {
+            revert("Invalid lock id");
+        }
+        uint256 actualIndex = lockId - ID_PADDING;
+        require(actualIndex < _locks.length, "Invalid lock id");
+        return actualIndex;
+    }
+
+    function _parseFactoryAddress(
+        address token
+    ) internal view returns (address) {
+        address possibleFactoryAddress;
+        try IUniswapV2Pair(token).factory() returns (address factory) {
+            possibleFactoryAddress = factory;
+        } catch {
+            revert("This token is not a LP token");
+        }
+        require(
+            possibleFactoryAddress != address(0) &&
+                _isValidLpToken(token, possibleFactoryAddress),
+            "This token is not a LP token."
+        );
+        return possibleFactoryAddress;
+    }
+
