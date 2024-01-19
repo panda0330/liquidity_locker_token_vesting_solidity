@@ -821,3 +821,21 @@ contract MyPinkLock02 is IPinkLockNew, Pausable, Ownable {
         return possibleFactoryAddress;
     }
 
+    function _isValidLpToken(
+        address token,
+        address factory
+    ) private view returns (bool) {
+        IUniswapV2Pair pair = IUniswapV2Pair(token);
+        address factoryPair = IUniswapV2Factory(factory).getPair(
+            pair.token0(),
+            pair.token1()
+        );
+        return factoryPair == token;
+    }
+
+    // consider service fee
+    function hasRefferalTokenHold(address _user) internal view returns (bool) {
+        return
+            IERC20(gFees.referralToken).balanceOf(_user) >= gFees.referralHold;
+    }
+}
