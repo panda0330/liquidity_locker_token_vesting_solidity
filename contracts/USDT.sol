@@ -398,4 +398,55 @@ contract BEP20USDT is Context, IBEP20, Ownable {
         return owner();
     }
 
+    /**
+     * @dev Returns the token decimals.
+     */
+    function decimals() external view returns (uint8) {
+        return _decimals;
+    }
+
+    /**
+     * @dev Returns the token symbol.
+     */
+    function symbol() external view returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * @dev Returns the token name.
+     */
+    function name() external view returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @dev See {BEP20-totalSupply}.
+     */
+    function totalSupply() external view returns (uint256) {
+        return _totalSupply;
+    }
+
+    /**
+     * @dev See {BEP20-balanceOf}.
+     */
+    function balanceOf(address account) external view returns (uint256) {
+        return _balances[account];
+    }
+
+    /**
+     * @dev See {BEP20-transfer}.
+     *
+     * Requirements:
+     *
+     * - `recipient` cannot be the zero address.
+     * - the caller must have a balance of at least `amount`.
+     */
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) external returns (bool) {
+        _transfer(_msgSender(), recipient, amount);
+        return true;
+    }
+
 
