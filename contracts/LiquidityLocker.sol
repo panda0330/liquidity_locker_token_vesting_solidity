@@ -83,5 +83,49 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
      * @param _unlock_date the unix timestamp (in seconds) until unlock
      * @param _withdrawer the user who can withdraw liquidity once the lock expires.
      */
+    function lockLpTokens(
+        address _lpToken,
+        uint256 _amount,
+        uint256 _unlock_date,
+        address payable _withdrawer
+    ) external payable nonReentrant {
+        require(_unlock_date < 10000000000, "TIMESTAMP INVALID"); // prevents errors when timestamp entered in milliseconds
+        require(_amount > 0, "INSUFFICIENT AMOUNT");
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+
+        // deposit lp token
+        LpToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        uint256 validFee;
+        uint256 referralAmount = gFees.referralToken.balanceOf(
+            address(msg.sender)
+        );
+        if (referralAmount >= gFees.referralHold) {
+            validFee = gFees.referralDiscountEthFee;
+        } else {
+            validFee = gFees.ethFee;
+        }
+
+        require(msg.value == validFee, "FEE NOT MET");
+
+        TokenLock memory token_lock;
+        token_lock.lockDate = block.timestamp;
+        token_lock.amount = _amount;
+        token_lock.initialAmount = _amount;
+        token_lock.unlockDate = _unlock_date;
+        token_lock.lockID = tokenLocks[_lpToken].length;
+        token_lock.owner = _withdrawer;
+
+        // record the lock for the lp token
+        tokenLocks[_lpToken].push(token_lock);
+        lockedTokens.add(_lpToken);
+
+        //record the lock for the user
+        UserInfo storage user = users[_withdrawer];
+        user.lockedTokens.add(_lpToken);
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(token_lock.lockID);
+
 
 }
