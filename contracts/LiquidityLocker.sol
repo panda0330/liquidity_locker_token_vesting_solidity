@@ -171,5 +171,48 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         token_lock.lockID = tokenLocks[_lpToken].length;
         token_lock.owner = msg.sender;
 
+        // record the lock for the lp token
+        tokenLocks[_lpToken].push(token_lock);
+
+        //record the lock for the user
+        UserInfo storage user = users[msg.sender];
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(token_lock.lockID);
+    }
+
+    /**
+     * @notice increase the amount of tokens per a specific lock, this is preferable to creating a new lock, less fees, and faster loading on our live block explorer
+     */
+    function incrementLock(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockId,
+        uint256 _amount
+    ) external payable nonReentrant {
+        require(_amount > 0, "ZERO AMOUNT");
+        uint256 lockId = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockId];
+        require(
+            lockId == _lockId && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(msg.value == gFees.ethEditFee, "FEE NOT MET");
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+        // deposit lp token
+        LpToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        userLock.amount = userLock.amount + (_amount);
+
+        emit onDeposit(
+            _lpToken,
+            msg.sender,
+            _amount,
+            userLock.lockDate,
+            userLock.unlockDate
+        );
+    }
+
 
 }
