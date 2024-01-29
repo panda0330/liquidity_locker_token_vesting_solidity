@@ -214,5 +214,139 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         );
     }
 
+    /**
+     * @notice transfer a lock to a new owner, e.g. presale project -> project owner
+     */
+    function transferLockOwnership(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockID,
+        address payable _newOwner
+    ) external payable {
+        require(msg.sender != _newOwner, "OWNER");
+        uint256 lockID = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage transferredLock = tokenLocks[_lpToken][lockID];
+        require(
+            lockID == _lockID && transferredLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
 
+        // record the lock for the new Owner
+        UserInfo storage user = users[_newOwner];
+        user.lockedTokens.add(_lpToken);
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(transferredLock.lockID);
+
+        // remove the lock from the old owner
+        uint256[] storage userLocks = users[msg.sender].locksForToken[_lpToken];
+        userLocks[_index] = userLocks[userLocks.length - 1];
+        userLocks.pop();
+
+        if (userLocks.length == 0) {
+            users[msg.sender].lockedTokens.remove(_lpToken);
+        }
+        transferredLock.owner = _newOwner;
+    }
+
+    /**
+     * @notice withdraw a specified amount from a lock. _index and _lockID ensure the correct lock is changed
+     * this prevents errors when a user performs multiple tx per block possibly with varying gas prices
+     */
+    function withdraw(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockID,
+        uint256 _amount
+    ) external nonReentrant {
+        require(_amount > 0, "ZERO WITHDRAWL");
+        uint256 lockID = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockID];
+        require(
+            lockID == _lockID && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(userLock.unlockDate < block.timestamp, "NOT YET");
+        userLock.amount = userLock.amount - (_amount);
+
+        // clean user storage
+        if (userLock.amount == 0) {
+            uint256[] storage userLocks = users[msg.sender].locksForToken[
+                _lpToken
+            ];
+            userLocks[_index] = userLocks[userLocks.length - 1];
+            userLocks.pop();
+
+            if (userLocks.length == 0) {
+                users[msg.sender].lockedTokens.remove(_lpToken);
+            }
+        }
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+        // withdraw lp token
+        LpToken.transfer(address(msg.sender), _amount);
+        emit onWithdraw(_lpToken, _amount);
+    }
+
+    // global functions
+    function getNumLocksForToken(
+        address _lpToken
+    ) external view returns (uint256) {
+        return tokenLocks[_lpToken].length;
+    }
+
+    function getNumLockedTokens() external view returns (uint256) {
+        return lockedTokens.length();
+    }
+
+    function getLockedTokenAtIndex(
+        uint256 _index
+    ) external view returns (address) {
+        return lockedTokens.at(_index);
+    }
+
+    // user functions
+    function getUserNumLockedTokens(
+        address _user
+    ) external view returns (uint256) {
+        UserInfo storage user = users[_user];
+        return user.lockedTokens.length();
+    }
+
+    function getUserLockedTokenAtIndex(
+        address _user,
+        uint256 _index
+    ) external view returns (address) {
+        UserInfo storage user = users[_user];
+        return user.lockedTokens.at(_index);
+    }
+
+    function getUserNumLocksForToken(
+        address _user,
+        address _lpToken
+    ) external view returns (uint256) {
+        UserInfo storage user = users[_user];
+        return user.locksForToken[_lpToken].length;
+    }
+
+    function getUserLockForTokenAtIndex(
+        address _user,
+        address _lpToken,
+        uint256 _index
+    )
+        external
+        view
+        returns (uint256, uint256, uint256, uint256, uint256, address)
+    {
+        uint256 lockID = users[_user].locksForToken[_lpToken][_index];
+        TokenLock storage tokenLock = tokenLocks[_lpToken][lockID];
+        return (
+            tokenLock.lockDate,
+            tokenLock.amount,
+            tokenLock.initialAmount,
+            tokenLock.unlockDate,
+            tokenLock.lockID,
+            tokenLock.owner
+        );
+    }
 }
