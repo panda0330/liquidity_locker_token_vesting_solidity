@@ -68,5 +68,285 @@ contract LiquidityLocker is Ownable, ReentrancyGuard {
         gFees.referralDiscountEthFee = referralDiscountEthFee;
     }
 
-    
+    function setReferralTokenAndHold(
+        address referralToken,
+        uint256 referralHold
+    ) public onlyOwner {
+        gFees.referralToken = IERC20(referralToken);
+        gFees.referralHold = referralHold;
+    }
+
+    /**
+     * @notice Creates a new lock
+     * @param _lpToken the lp token address
+     * @param _amount amount of LP tokens to lock
+     * @param _unlock_date the unix timestamp (in seconds) until unlock
+     * @param _withdrawer the user who can withdraw liquidity once the lock expires.
+     */
+    function lockLpTokens(
+        address _lpToken,
+        uint256 _amount,
+        uint256 _unlock_date,
+        address payable _withdrawer
+    ) external payable nonReentrant {
+        require(_unlock_date < 10000000000, "TIMESTAMP INVALID"); // prevents errors when timestamp entered in milliseconds
+        require(_amount > 0, "INSUFFICIENT AMOUNT");
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+
+        // deposit lp token
+        LpToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        uint256 validFee;
+        uint256 referralAmount = gFees.referralToken.balanceOf(
+            address(msg.sender)
+        );
+        if (referralAmount >= gFees.referralHold) {
+            validFee = gFees.referralDiscountEthFee;
+        } else {
+            validFee = gFees.ethFee;
+        }
+
+        require(msg.value == validFee, "FEE NOT MET");
+
+        TokenLock memory token_lock;
+        token_lock.lockDate = block.timestamp;
+        token_lock.amount = _amount;
+        token_lock.initialAmount = _amount;
+        token_lock.unlockDate = _unlock_date;
+        token_lock.lockID = tokenLocks[_lpToken].length;
+        token_lock.owner = _withdrawer;
+
+        // record the lock for the lp token
+        tokenLocks[_lpToken].push(token_lock);
+        lockedTokens.add(_lpToken);
+
+        //record the lock for the user
+        UserInfo storage user = users[_withdrawer];
+        user.lockedTokens.add(_lpToken);
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(token_lock.lockID);
+
+        emit onDeposit(
+            _lpToken,
+            msg.sender,
+            token_lock.amount,
+            token_lock.lockDate,
+            token_lock.unlockDate
+        );
+    }
+
+    /**
+     * @notice split a lock into two seperate locks, useful when a lock is about to expire and youd like to relock a portion
+     * and withdraw a smaller portion
+     * @param _lpToken the lp token address
+     * @param _index users[msg.sender].locksForToken[_lpToken][_index]
+     * @param _lockedId tokenLocks[_lpToken][lockID]
+     * @param _amount amount to split
+
+     */
+    function splitLock(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockedId,
+        uint256 _amount
+    ) external payable nonReentrant {
+        require(_amount > 0, "ZERO AMOUNT");
+        uint256 lockId = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockId];
+        require(
+            lockId == _lockedId && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(msg.value == gFees.ethEditFee, "FEE NOT MET");
+
+        userLock.amount = userLock.amount - (_amount);
+
+        TokenLock memory token_lock;
+        token_lock.lockDate = userLock.lockDate;
+        token_lock.amount = _amount;
+        token_lock.initialAmount = _amount;
+        token_lock.unlockDate = userLock.unlockDate;
+        token_lock.lockID = tokenLocks[_lpToken].length;
+        token_lock.owner = msg.sender;
+
+        // record the lock for the lp token
+        tokenLocks[_lpToken].push(token_lock);
+
+        //record the lock for the user
+        UserInfo storage user = users[msg.sender];
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(token_lock.lockID);
+    }
+
+    /**
+     * @notice increase the amount of tokens per a specific lock, this is preferable to creating a new lock, less fees, and faster loading on our live block explorer
+     */
+    function incrementLock(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockId,
+        uint256 _amount
+    ) external payable nonReentrant {
+        require(_amount > 0, "ZERO AMOUNT");
+        uint256 lockId = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockId];
+        require(
+            lockId == _lockId && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(msg.value == gFees.ethEditFee, "FEE NOT MET");
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+        // deposit lp token
+        LpToken.transferFrom(address(msg.sender), address(this), _amount);
+
+        userLock.amount = userLock.amount + (_amount);
+
+        emit onDeposit(
+            _lpToken,
+            msg.sender,
+            _amount,
+            userLock.lockDate,
+            userLock.unlockDate
+        );
+    }
+
+    /**
+     * @notice transfer a lock to a new owner, e.g. presale project -> project owner
+     */
+    function transferLockOwnership(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockID,
+        address payable _newOwner
+    ) external payable {
+        require(msg.sender != _newOwner, "OWNER");
+        uint256 lockID = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage transferredLock = tokenLocks[_lpToken][lockID];
+        require(
+            lockID == _lockID && transferredLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        // record the lock for the new Owner
+        UserInfo storage user = users[_newOwner];
+        user.lockedTokens.add(_lpToken);
+        uint256[] storage user_locks = user.locksForToken[_lpToken];
+        user_locks.push(transferredLock.lockID);
+
+        // remove the lock from the old owner
+        uint256[] storage userLocks = users[msg.sender].locksForToken[_lpToken];
+        userLocks[_index] = userLocks[userLocks.length - 1];
+        userLocks.pop();
+
+        if (userLocks.length == 0) {
+            users[msg.sender].lockedTokens.remove(_lpToken);
+        }
+        transferredLock.owner = _newOwner;
+    }
+
+    /**
+     * @notice withdraw a specified amount from a lock. _index and _lockID ensure the correct lock is changed
+     * this prevents errors when a user performs multiple tx per block possibly with varying gas prices
+     */
+    function withdraw(
+        address _lpToken,
+        uint256 _index,
+        uint256 _lockID,
+        uint256 _amount
+    ) external nonReentrant {
+        require(_amount > 0, "ZERO WITHDRAWL");
+        uint256 lockID = users[msg.sender].locksForToken[_lpToken][_index];
+        TokenLock storage userLock = tokenLocks[_lpToken][lockID];
+        require(
+            lockID == _lockID && userLock.owner == msg.sender,
+            "LOCK MISMATCH"
+        ); // ensures correct lock is affected
+
+        require(userLock.unlockDate < block.timestamp, "NOT YET");
+        userLock.amount = userLock.amount - (_amount);
+
+        // clean user storage
+        if (userLock.amount == 0) {
+            uint256[] storage userLocks = users[msg.sender].locksForToken[
+                _lpToken
+            ];
+            userLocks[_index] = userLocks[userLocks.length - 1];
+            userLocks.pop();
+
+            if (userLocks.length == 0) {
+                users[msg.sender].lockedTokens.remove(_lpToken);
+            }
+        }
+
+        IERC20 LpToken = IERC20(address(_lpToken));
+        // withdraw lp token
+        LpToken.transfer(address(msg.sender), _amount);
+        emit onWithdraw(_lpToken, _amount);
+    }
+
+    // global functions
+    function getNumLocksForToken(
+        address _lpToken
+    ) external view returns (uint256) {
+        return tokenLocks[_lpToken].length;
+    }
+
+    function getNumLockedTokens() external view returns (uint256) {
+        return lockedTokens.length();
+    }
+
+    function getLockedTokenAtIndex(
+        uint256 _index
+    ) external view returns (address) {
+        return lockedTokens.at(_index);
+    }
+
+    // user functions
+    function getUserNumLockedTokens(
+        address _user
+    ) external view returns (uint256) {
+        UserInfo storage user = users[_user];
+        return user.lockedTokens.length();
+    }
+
+    function getUserLockedTokenAtIndex(
+        address _user,
+        uint256 _index
+    ) external view returns (address) {
+        UserInfo storage user = users[_user];
+        return user.lockedTokens.at(_index);
+    }
+
+    function getUserNumLocksForToken(
+        address _user,
+        address _lpToken
+    ) external view returns (uint256) {
+        UserInfo storage user = users[_user];
+        return user.locksForToken[_lpToken].length;
+    }
+
+    function getUserLockForTokenAtIndex(
+        address _user,
+        address _lpToken,
+        uint256 _index
+    )
+        external
+        view
+        returns (uint256, uint256, uint256, uint256, uint256, address)
+    {
+        uint256 lockID = users[_user].locksForToken[_lpToken][_index];
+        TokenLock storage tokenLock = tokenLocks[_lpToken][lockID];
+        return (
+            tokenLock.lockDate,
+            tokenLock.amount,
+            tokenLock.initialAmount,
+            tokenLock.unlockDate,
+            tokenLock.lockID,
+            tokenLock.owner
+        );
+    }
 }
